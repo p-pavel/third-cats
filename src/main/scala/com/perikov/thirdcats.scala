@@ -1,5 +1,6 @@
 package com.perikov
-
+type Id[A] = A
+type Compose[F[_],G[_]] = [A] =>> F[G[A]]
 trait Arr:
   type Dom
   type Codom
@@ -10,63 +11,78 @@ type Obj = { type Repr}
 object Obj:
   type Aux[O <: Obj,R] = O {type Repr = R}
 
-trait Category:
-  type O <: Obj
+trait Composable:
   type A <: Arr
   def compose(f: A, g: Arr.Aux[A,? ,f.Dom]): Arr.Aux[A,g.Dom,f.Codom]
+
+object Composable {
+  type Aux[a <: Arr] = Composable {type A = a}
+}
+
+trait Category extends Composable:
+  type O <: Obj
   def id[T](using Obj.Aux[O,T]): Arr.Aux[A,T,T]
 
 object Category:
   type Aux[o <: Obj,a <: Arr] = Category { type O = o; type A=a}
 
-trait Intercategory:
-  val srcCat: Category
-  val dstCat: Category
-
-trait FunctorBase extends Intercategory, Arr:
-  type Dom   = srcCat.type
-  type Codom = dstCat.type
+trait FunctorBase extends Arr:
+  self =>
+  type Dom   <: Arr
+  type Codom <: Arr
   type F[_]
 
-
 sealed trait Functor extends FunctorBase:
-  def fmap(arg: srcCat.A): Arr.Aux[dstCat.A, F[arg.Dom],F[arg.Codom]]
-
-sealed trait ContraFunctor extends FunctorBase:
-  def fmap(arg: srcCat.A): Arr.Aux[dstCat.A, F[arg.Codom],F[arg.Dom]]
+  self =>
+  def fmap(arg: Dom): Arr.Aux[Codom, F[arg.Dom],F[arg.Codom]]
+  def andThen(other: Arr.Aux[Functor, Codom, ?] ) =
+    Functor[Compose[other.F,F], self.Dom, other.Codom]((a: Dom) => other.fmap(self.fmap(a)))
+//sealed trait ContraFunctor extends FunctorBase:
+//  def fmap(arg: srcCat.A): Arr.Aux[dstCat.A, F[arg.Codom],F[arg.Dom]]
 
 
 object Functor:
-  type Aux[G[_], c1 <: Category, c2 <: Category] = Functor {type F[t] = G[t]; type Dom = c1; type Codom = c2}
-  def apply[G[_]](c1: Category, c2: Category, func: (arg: c1.A) => Arr.Aux[c2.A,G[arg.Dom], G[arg.Codom]] ):
-    Functor.Aux[G,c1.type, c2.type ] =
+  type Aux[G[_], c1 <: Arr, c2 <: Arr] = Functor {type F[t] = G[t]; type Dom = c1; type Codom = c2}
+  def id[A <: Arr] = Functor[Id,A,A]((a: A) => a)
+  transparent inline def apply[G[_], A1 <: Arr, A2 <: Arr](func: (arg: A1) => Arr.Aux[A2,G[arg.Dom], G[arg.Codom]] ):
+    Functor.Aux[G, A1, A2] =
     new Functor:
-      val srcCat:c1.type = c1
-      val dstCat:c2.type = c2
+      type Dom = A1
+      type Codom = A2
       type F[t] = G[t]
-      def fmap(arg: srcCat.A): Arr.Aux[dstCat.A, F[arg.Dom],F[arg.Codom]] = func(arg)
+      def fmap(arg: Dom): Arr.Aux[Codom, F[arg.Dom],F[arg.Codom]] = func(arg)
+
+type TypeFunc = {type F[_]}
+object TypeFunc:
+  type Aux[G[_]] = TypeFunc {type F[t] = G[t]}
 
 
-trait Natural extends Intercategory:
-  val dom  : Functor
-  val codom: Functor
-  type Dom   =  dom.type
-  type Codom = codom.type
-  def apply[T](using o: Obj.Aux[srcCat.O,T]): Arr.Aux[dstCat.A, dom.F[T], codom.F[T]]
+trait Natural[O <: Obj, A <: Arr] :
+  self =>
+  protected val proof: Composable.Aux[A]
+  type F1[_]
+  type F2[_]
+  type Dom = TypeFunc.Aux[F1]
+  type Codom = TypeFunc.Aux[F2]
+  def apply[T](using o: Obj.Aux[O,T]): Arr.Aux[A, F1[T], F2[T]]
+  def andThen( other: Natural[O,A] {type F1[t] = self.F2[t]} ): Natural.Aux[O,A,self.F1, other.F2]
+
 
 object Natural:
-  def apply(
-            func1: Functor,
-            func2: Arr.Aux[Functor,func1.Dom, func1.Codom],
-            trans: [T] => (o: Obj.Aux[func1.srcCat.O, T]) ?=> Arr.Aux[func1.dstCat.A, func1.F[T], func2.F[T]]
-           ) =
-    new Natural:
-      val srcCat: func1.srcCat.type = func1.srcCat
-      val dstCat: func1.dstCat.type  = func1.dstCat
-      val dom: func1.type   = func1
-      val codom: func2.type = func2
-      def apply[T](using o: Obj.Aux[srcCat.O,T]): Arr.Aux[dstCat.A, dom.F[T], codom.F[T]] = trans(using o)
-
-
-
-
+  def id[O <: Obj,A <: Arr, f[_]]: Natural.Aux[O,A,f,f] =
+    ???
+  type Aux[O <: Obj, A <: Arr, f1[_], f2[_]] = Natural[O,A] {type F1[t] = f1[t]; type F2[t] = f2[t]}
+  def apply[O <: Obj, A <: Arr: Composable.Aux,f1[_],f2[_]](trans: [T]=> (o: Obj.Aux[O,T]) ?=> Arr.Aux[A,f1[T],f2[T]]):
+    Natural.Aux[O,A,f1,f2]
+    =
+    new Natural[O,A]:
+      self =>
+      protected val proof: Composable.Aux[A] = summon
+      type F1[t] = f1[t]
+      type F2[t] = f2[t]
+      def apply[T](using o: Obj.Aux[O,T]): Arr.Aux[A, F1[T], F2[T]] = trans[T]
+      def andThen( other: Natural[O,A] {type F1[t] = self.F2[t]} ): Natural.Aux[O,A,self.F1, other.F2] =
+        Natural[O,A,F1, other.F2]([T]=>(o: Obj.Aux[O,T]) ?=> {
+          val t2: Arr.Aux[A, F2[T], other.F2[T]] = other[T]
+          proof.compose(t2, self[T])
+        })
