@@ -37,9 +37,9 @@ sealed trait ContraFunctor extends FunctorBase:
 
 
 object Functor:
-  type Aux[G[_], c1 <: Arr, c2 <: Arr] = Functor {type F[t] = G[t]; type Dom = c1; type Codom = c2}
+  type Aux[G[_], c1 <: Category, c2 <: Category] = Functor {type F[t] = G[t]; type Dom = c1; type Codom = c2}
   def apply[G[_]](c1: Category, c2: Category, func: (arg: c1.A) => Arr.Aux[c2.A,G[arg.Dom], G[arg.Codom]] ):
-    Functor.Aux[G,c1.A, c2.A ] =
+    Functor.Aux[G,c1.type, c2.type ] =
     new Functor:
       val srcCat:c1.type = c1
       val dstCat:c2.type = c2
