@@ -1,8 +1,11 @@
 package com.perikov.thirdcats.basics
 
-import com.perikov.thirdcats.basics.Attemt25.Arr.Aux
+import com.perikov.thirdcats.basics.Categories.Arr.Aux
 
-object Attemt25 {
+object Categories {
+  trait Category[A <: Arr, O <: {type Obj}] extends Composable[A]:
+    def id[t](using O {type Obj = t}): Arr.Aux[A, t,t]
+
   trait Arr:
     type Dom
     type Codom
@@ -20,8 +23,10 @@ object Attemt25 {
 
   trait Nat[C1 <: Arr, C2 <: Arr] extends Arr:
     self=>
-    type Dom = Arr.Aux[Functor, C1,C2]
-    type Codom = Arr.Aux[Functor,C1,C2]
+    type F1[_]
+    type F2[_]
+    type Dom = Functor.Aux[F1,C1,C2]
+    type Codom = Functor.Aux[F2,C1,C2]
     def apply[T]: Arr.Aux[C2, self.Dom#F[T], self.Codom#F[T] ]
 
   trait Composable[ A <: Arr] :
@@ -35,12 +40,14 @@ object Attemt25 {
     A {type Dom = a2.Dom; type Codom = a1.Codom} =
       new Nat[c1,c2]:
         self=>
+        type F1[t] = a2.F1[t]
+        type F2[t] = a1.F2[t]
         def apply[T]: c2{type Dom = self.Dom#F[T]; type Codom = self.Codom#F[T] } =
           val t2: Arr.Aux[c2,a2.Dom#F[T], a2.Codom#F[T]] = a2[T]
           val t1: Arr.Aux[c2,a1.Dom#F[T], a1.Codom#F[T]] = a1[T]
           val postulateToWorkAroundTypeSystemLimitation: a2.Codom#F[T] =:= a1.Dom#F[T] = proof.asInstanceOf
           val tst = postulateToWorkAroundTypeSystemLimitation.liftCo[[q]=>>Arr.Aux[c2,a2.Dom#F[T], q]]
-          val t3: Aux[c2, a2.Codom#F[T], a1.Dom#F[T]] = tst(t2)
+          val t3: Aux[c2, a2.F1[T], a1.F1[T]] = tst(t2)
           val t4  = comp.compose(t1,t3)
           t4
 
@@ -98,5 +105,22 @@ object Attemt25 {
   val ScalaIdFunctor = idFunctor[FuncWrapper]
   type ScalaNat = Nat[FuncWrapper, FuncWrapper]
 
-//  object id2List extends Nat[FuncWrapper,FuncWrapper]
+  object id2Option extends Nat[FuncWrapper,FuncWrapper]:
+    type F1[t] = t
+    type F2[t] = Option[t]
+    def apply[T]: Arr.Aux[FuncWrapper,T, F2[T]] = (t: T) => Option(t)
+
+  object option2List extends Nat[FuncWrapper, FuncWrapper]:
+    type F1[t] = Option[t]
+    type F2[t] = List[t]
+    def apply[T]: Arr.Aux[FuncWrapper, F1[T],F2[T]] = (a: Option[T]) =>
+        a match
+          case None => List.empty
+          case Some(t) => List(t)
+
+  val ttt = compose(option2List, id2Option)
+  @main
+  def testComposition() =
+    println(ttt(1))
+
 }
