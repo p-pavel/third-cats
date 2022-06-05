@@ -1,22 +1,24 @@
 package com.perikov.thirdcats
 
-import com.perikov.thirdcats.Arrow.Aux
 
-trait ComposableBase:
+trait Composable:
   type A <: Arrow
   def compose(a1: A, a2: A)(using a2.Codom =:= a1.Dom): Arrow.Aux[A, a2.Dom, a1.Codom]
 
-trait IsComposable[B <: Arrow] extends ComposableBase:
-  type A = B
+object Composable:
+  type Aux[t] = Composable {type A = t}
 
-trait CategoryBase extends ComposableBase:
+trait Category extends Composable:
   type IsObj[t]
   def id[t](using o: IsObj[t]): Arrow.Id[A,t]
+  def dom(a: A): IsObj[a.Dom]
+
+extension [A <: Arrow](a2: A) def andThen(a1: A)(using p: a2.Codom =:= a1.Dom, c: Composable.Aux[A]):
+  Arrow.Aux[A,a2.Dom, a1.Codom] = c.compose(a1,a2)
 
 
-
-trait Category[B <: Arrow] extends ComposableBase:
-  type A = B
+inline def compose[A <: Arrow](a1: A, a2: A)(using p: a2.Codom =:= a1.Dom, c: Composable.Aux[A]):
+  Arrow.Aux[A,a2.Dom, a1.Codom] = c.compose(a1,a2)
 
 
 

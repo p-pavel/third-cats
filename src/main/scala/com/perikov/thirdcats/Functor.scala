@@ -20,12 +20,14 @@ object Functor:
   type Aux[G[_], A1 <: Arrow, A2 <: Arrow] = Functor {type F[t] = G[t]; type Dom = A1; type Codom = A2}
   def id[A <: Arrow]: IdFunctor[A] = IdFunctorImpl()
 
-inline given functorCategory: Category[Functor] with
+inline given functorCategory: Category with
+  type A = Functor
   trait IsObj[t]:
     def idFunctor: IdFunctor[t]
   given [A <: Arrow]: IsObj[A] with
     def idFunctor = IdFunctorImpl()
 
+  def dom(a: A): IsObj[a.Dom] = summon
   def id[t](using o: IsObj[t]): IdFunctor[t] = o.idFunctor
   def compose(a1: Functor, a2: Functor)(using proof: a2.Codom =:= a1.Dom): Arrow.Aux[Functor, a2.Dom, a1.Codom] =
     new Functor :

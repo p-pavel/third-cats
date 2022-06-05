@@ -1,16 +1,17 @@
 package com.perikov.thirdcats
 
 
-class NatCategory(val c1: CategoryBase, val c2: CategoryBase) extends CategoryBase:
+class NatCategory(val c1: Category, val c2: Category) extends Category:
   trait Nat extends Arrow:
-    type F1[_]
-    type F2[_]
-    type Dom = Functor.Aux[F1,c1.A, c2.A]
-    type Codom = Functor.Aux[F2, c1.A, c2.A]
+    val dom: Arrow.Aux[Functor,c1.A, c2.A]
+    val codom: Arrow.Aux[Functor,c1.A,c2.A]
+    type Dom = Functor.Aux[dom.F,c1.A, c2.A]
+    type Codom = Functor.Aux[codom.F, c1.A, c2.A]
     def apply[T](using obj: c1.IsObj[T]): Arrow.Aux[c2.A, Dom#F[T], Codom#F[T]]
 
   type A = Nat
 
+  def dom(a: A): IsObj[a.Dom] = IsObj(a.dom)
   trait IsObj[T]:
     type F[_]
     def idNat: Arrow.Id[Nat, T]
@@ -21,10 +22,10 @@ class NatCategory(val c1: CategoryBase, val c2: CategoryBase) extends CategoryBa
         type F[t] = G[t]
         def idNat: Arrow.Id[Nat,Functor.Aux[F,c1.A, c2.A]] =
           new Nat:
-            type F1[t] = F[t]
-            type F2[t] = F[t]
-            def apply[T](using obj: c1.IsObj[T]): Arrow.Aux[c2.A, F1[T], F2[T]] =
-              func(c1.id[T])
+            val dom:func.type = func
+            val codom:func.type = func
+            def apply[T](using obj: c1.IsObj[T]): Arrow.Aux[c2.A, dom.F[T], codom.F[T]] =
+              dom(c1.id[T])
 
   def id[T](using obj: IsObj[T]): Arrow.Id[Nat,T] = obj.idNat
   def id(func: Arrow.Aux[Functor,c1.A,c2.A]): Arrow.Id[Nat, Functor.Aux[func.F,c1.A, c2.A] ] =
@@ -33,8 +34,8 @@ class NatCategory(val c1: CategoryBase, val c2: CategoryBase) extends CategoryBa
   def compose(a1: A, a2: A)(using proof: a2.Codom =:= a1.Dom): Arrow.Aux[A, a2.Dom, a1.Codom] =
     new Nat:
       self=>
-      type F1[t] = a2.F1[t]
-      type F2[t] = a1.F2[t]
+      val dom:a2.dom.type = a2.dom
+      val codom: a1.codom.type = a1.codom
       def apply[T](using obj: c1.IsObj[T]): Arrow.Aux[c2.A, self.Dom#F[T], self.Codom#F[T]] =
         val t2: Arrow.Aux[c2.A,a2.Dom#F[T], a2.Codom#F[T]] = a2[T]
         val t1: Arrow.Aux[c2.A,a1.Dom#F[T], a1.Codom#F[T]] = a1[T]
