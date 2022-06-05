@@ -5,5 +5,5 @@ ThisBuild / scalaVersion := "3.1.2"
 lazy val root = (project in file("."))
   .settings(
     name := "third-cats",
-    scalacOptions ++= Seq("-source:future-migration", "-Xfatal-warnings" )
+    scalacOptions ++= Seq("-source:future-migration", "-Xfatal-warnings", "-explain" )
   )
