@@ -7,6 +7,8 @@ object ScalaCategory extends Category:
   opaque type IsObj[T] = Unit
   given [T]: IsObj[T] = ()
   def dom(a: A): IsObj[a.Dom] = summon
+  def codom(a: A): IsObj[a.Codom] = summon
+
   def compose(a1: A, a2: A)(using p: a2.Codom =:= a1.Dom): Arrow.Aux[A, a2.Dom, a1.Codom] =
     new FuncWrapper :
       type Dom = a2.Dom

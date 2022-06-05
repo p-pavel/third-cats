@@ -12,6 +12,7 @@ trait Category extends Composable:
   type IsObj[t]
   def id[t](using o: IsObj[t]): Arrow.Id[A,t]
   def dom(a: A): IsObj[a.Dom]
+  def codom(a: A): IsObj[a.Codom]
 
 extension [A <: Arrow](a2: A) def andThen(a1: A)(using p: a2.Codom =:= a1.Dom, c: Composable.Aux[A]):
   Arrow.Aux[A,a2.Dom, a1.Codom] = c.compose(a1,a2)

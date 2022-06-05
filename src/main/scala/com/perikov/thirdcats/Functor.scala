@@ -22,12 +22,13 @@ object Functor:
 
 inline given functorCategory: Category with
   type A = Functor
-  trait IsObj[t]:
+  sealed trait IsObj[t]:
     def idFunctor: IdFunctor[t]
   given [A <: Arrow]: IsObj[A] with
     def idFunctor = IdFunctorImpl()
 
   def dom(a: A): IsObj[a.Dom] = summon
+  def codom(a: A): IsObj[a.Codom] = summon
   def id[t](using o: IsObj[t]): IdFunctor[t] = o.idFunctor
   def compose(a1: Functor, a2: Functor)(using proof: a2.Codom =:= a1.Dom): Arrow.Aux[Functor, a2.Dom, a1.Codom] =
     new Functor :

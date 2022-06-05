@@ -12,15 +12,14 @@ class NatCategory(val c1: Category, val c2: Category) extends Category:
   type A = Nat
 
   def dom(a: A): IsObj[a.Dom] = IsObj(a.dom)
-  trait IsObj[T]:
-    type F[_]
+  def codom(a: A): IsObj[a.Codom] = IsObj(a.codom)
+  sealed trait IsObj[T]:
     def idNat: Arrow.Id[Nat, T]
 
   object IsObj:
     def apply[G[_]](func: Functor.Aux[G,c1.A,c2.A]) =
-      new IsObj[Functor.Aux[G,c1.A,c2.A]]:
-        type F[t] = G[t]
-        def idNat: Arrow.Id[Nat,Functor.Aux[F,c1.A, c2.A]] =
+      new IsObj[Functor.Aux[G,c1.A,c2.A]]: // TODO: singleton type?
+        def idNat: Arrow.Id[Nat,Functor.Aux[G,c1.A,c2.A]] =
           new Nat:
             val dom:func.type = func
             val codom:func.type = func
