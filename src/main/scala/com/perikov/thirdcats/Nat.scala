@@ -38,6 +38,7 @@ class NatCategory(val c1: Category, val c2: Category) extends Category:
       def apply[T](using obj: c1.IsObj[T]): Arrow.Aux[c2.A, self.Dom#F[T], self.Codom#F[T]] =
         val t2: Arrow.Aux[c2.A,a2.Dom#F[T], a2.Codom#F[T]] = a2[T]
         val t1: Arrow.Aux[c2.A,a1.Dom#F[T], a1.Codom#F[T]] = a1[T]
+        //TODO: extract to postulate
         val postulateToWorkAroundTypeSystemLimitation: a2.Codom#F[T] =:= a1.Dom#F[T] = proof.asInstanceOf
         val tst = postulateToWorkAroundTypeSystemLimitation.liftCo[[q]=>>Arrow.Aux[c2.A,a2.Dom#F[T], q]]
         val t3: Arrow.Aux[c2.A, a2.Dom#F[T], a1.Dom#F[T]] = tst(t2)

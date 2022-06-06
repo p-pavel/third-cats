@@ -39,6 +39,7 @@ inline given functorCategory: Category with
 
       def apply(arg: Dom): Arrow.Aux[Codom, F[arg.Dom], F[arg.Codom]] =
         val t1: Arrow.Aux[a2.Codom, a2.F[arg.Dom], a2.F[arg.Codom]] = a2(arg)
+        //TODO: extract to postulate
         val t2: Arrow.Aux[a1.Dom, a2.F[arg.Dom], a2.F[arg.Codom]] = t1.asInstanceOf
         val t3 = a1(t2)
         t3
