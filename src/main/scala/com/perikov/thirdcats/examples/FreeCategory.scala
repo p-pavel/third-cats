@@ -2,6 +2,8 @@ package com.perikov.thirdcats.examples
 
 import com.perikov.thirdcats.*
 
+//TODO: decide on extract
+//TODO: Tests for FreeCategory
 class FreeCategory[Original <: Arrow]:
   type A = FreeArrow[Original]
   type IsObj[T] = A#IsObj[T]

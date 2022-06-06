@@ -5,5 +5,6 @@ ThisBuild / scalaVersion := "3.1.2"
 lazy val root = (project in file("."))
   .settings(
     name := "third-cats",
-    scalacOptions ++= Seq("-source:future-migration", "-Xfatal-warnings", "-explain" )
+    scalacOptions ++= Seq("-source:future-migration", "-Xfatal-warnings", "-explain" ),
+    libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.12" % "test"
   )
