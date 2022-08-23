@@ -1,12 +1,7 @@
 package com.perikov.thirdcats.rec_schemes
-import com.perikov.thirdcats.scala.ScalaFunctor
+import functors.{Functor,fmap}
 
 import scala.Function.const
-
-trait Functor[F[_]]:
-  extension [A](fa: F[A]) def map[B](f: A => B): F[B]
-def fmap[A,B, F[_]: Functor](f: A => B):  F[A] => F[B]  =  (fa: F[A]) => fa.map(f)
-
 
 object MuType:
   case class Mu[T[_]](value: T[Mu[T]]) extends AnyVal
@@ -22,12 +17,13 @@ object FunctorialRecursion:
   type CoAlgebra[F[_],A] = A => F[A]
   type RAlgebra[F[_], A] = F[(Mu[F], A)] => A
   type RAlgebra1[F[_], A] = Mu[F] =>  F[A] => A
+  type RCoAlgebra[F[_],A] = A => F[Either[Mu[F],A]]
 
-  def cata[T[_]:Functor,C](phi: Algebra[T,C]):Mu[T] => C =
-    fromMu[T] >>> fmap(cata(phi)) >>> phi
+  def cata[T[_]:Functor,C](phi: Algebra[T,C])(arg: Mu[T]): C =
+    (fromMu[T] >>> fmap(a => cata(phi)(a)) >>> phi)( arg)
 
   def ana[T[_]: Functor,C](psi: CoAlgebra[T,C]): C => Mu[T] =
-    psi       >>> fmap(ana(psi))  >>> toMu
+    psi       >>> fmap(a => ana(psi)(using summon)(a))  >>> toMu
 
   def para[T[_]: Functor, C](alg: RAlgebra[T,C]): Mu[T] => C =
     fromMu[T] >>> fmap( identity[Mu[T]] &&& para(alg)) >>> alg
@@ -36,14 +32,17 @@ object FunctorialRecursion:
     def alg(t: T[(Mu[T],C)]): C = phi(t.map(_._2))
     para(alg)
 
-  def para2[T[_]: Functor, C](alg: RAlgebra1[T,C])(t:Mu[T]): C =
+  def para1[T[_]: Functor, C](alg: RAlgebra1[T,C])(t:Mu[T]): C =
     val t1 = alg(t)
-    val t2 = fmap(para2(alg))
+    val t2 = fmap(para1(alg))
     val t3 = fromMu(t)
     t1(t2(t3))
 
   def cata2[T[_]: Functor, C](phi: Algebra[T,C]): Mu[T] => C =
-    para2(const(phi))
+    para1(const(phi))
+
+  def apo[T[_]: Functor, C](apo: RCoAlgebra[T,C]): C => Mu[T] = ???
+
 
 
 object MendlerRecursions:
@@ -75,33 +74,32 @@ def listCount[T]: MendlerAlgebra[[t]=>>ListF[T,t],Int] = [A]=> (f: A => Int) => 
     case ListF.Cons(_, t) => 1 + f(t)
 
 
-val mRange:MendlerCoAlgebra[[t]=>>ListF[Int,t], Int] = [A] => (f: Int=>A) => (n: Int) =>
+val mRange:CoAlgebra[[t]=>>ListF[Int,t], Int] =  (n: Int) =>
   if (n == 0) ListF.Nil
-  else ListF.Cons(n, f(n-1))
+  else ListF.Cons(n, n-1)
 
-def range(n: Int) = MendlerRecursions.mana(mRange)(n)
+def range = FunctorialRecursion.ana(mRange)
+
+import MuType.*
+import FunctorialRecursion.*
+def filterListF[A](cond: A => Boolean): Algebra[[t]=>>ListF[A,t], Mu1[ListF,A] ] = {
+  case t@ListF.Cons(head, _) if cond(head) => Mu(t)
+  case ListF.Cons(_, tail) => tail
+  case _ => Mu(ListF.Nil)
+}
+
+def filter1[A](cond: A => Boolean): Mu1[ListF,A] => Mu1[ListF,A] =  cata(filterListF(cond))
+
+def toListF[A]:Algebra[[t]=>>ListF[A,List[A]], List[A]] = l =>
+  l match
+    case ListF.Nil => Nil
+    case ListF.Cons(head, tail) => head :: tail
+def toList[A]: Mu1[ListF,A] => List[A] = cata(toListF)
 
 
-object Duality:
-  import MuType.*
-  trait DualT[T]:
-    type Res
 
-  given dualFuncT[A,B]: DualT[A => B] with
-    type Res = B => A
-
-  trait Dual[T](using val d: DualT[T]):
-    def apply: d.Res
-
-  val from:[T[_]]=>Mu[T]=>T[Mu[T]] = [T[_]] => (m: Mu[T]) => m.value
-
-
-
-
-
-val t = range(1000)
+val t: Mu1[ListF,Int] = range(100)
 /*TODO
- * paramorphism в функторальной и Mendler схемах
  * законы морфизмов
  * категорийная интерпретация
  * Comonads
@@ -111,4 +109,5 @@ val t = range(1000)
 */
 @main
 def test() =
-  println(mcata(listCount)(t))
+  println(toList(t))
+  println(toList(filter1((_: Int) % 2 == 0)(t)))

@@ -17,6 +17,6 @@ def toName(n: Int): String =
 
 @main
 def testFizzBuzz() =
-  val limit = 10_000_000
-  val out = new PrintStream("/dev/console")
+  val limit = 100_000_000
+  val out = new PrintStream("/dev/null")
   printTiming(1 to limit foreach (toName andThen out.print))
